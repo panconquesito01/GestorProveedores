@@ -1,0 +1,62 @@
+@page "/login"
+@layout LoginLayout
+@inject WebAppSessionService SessionService
+@inject NavigationManager Navigation
+
+<PageTitle>Ingreso - Gestor Proveedores</PageTitle>
+
+<section class="login-shell">
+    <div class="login-card">
+        <div class="panel-header compact">
+            <span class="section-kicker">Acceso seguro</span>
+            <h1>Ingresar</h1>
+            <p>Operacion de solicitudes, proveedores, documentos y aprobaciones.</p>
+        </div>
+
+        <form method="post" action="/account/login">
+            <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+            <label class="field-label" for="identificador">Usuario o correo</label>
+            <input id="identificador" class="premium-input" name="identificador" value="@Identificador" autocomplete="username" required />
+
+            <label class="field-label" for="password">Contrasena</label>
+            <input id="password" class="premium-input" name="password" type="password" autocomplete="current-password" required />
+
+            @if (Error == "1")
+            {
+                <div class="form-alert">Usuario o contrasena incorrectos.</div>
+            }
+
+            <button class="premium-button" type="submit">Ingresar</button>
+        </form>
+    </div>
+
+    <aside class="login-aside" aria-label="Resumen del proceso">
+        <span class="section-kicker">Flujo principal</span>
+        <h2>De la solicitud al cierre contable, sin perder trazabilidad.</h2>
+        <div class="login-flow">
+            <span>Solicitud</span>
+            <span>Proveedor</span>
+            <span>Orden</span>
+            <span>Factura</span>
+            <span>Contabilidad</span>
+        </div>
+    </aside>
+</section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    private string Identificador => Error == "1" ? string.Empty : "crojas";
+
+    protected override void OnInitialized()
+    {
+        if (SessionService.GetCurrentSession() is not null)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+}

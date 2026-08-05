@@ -1,7 +1,109 @@
 ﻿@page "/"
+@inject WebAppSessionService SessionService
+@inject NavigationManager Navigation
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Gestor Proveedores</PageTitle>
 
-<h1>Hello, world!</h1>
+@if (session is null)
+{
+	<section class="loading-shell">
+		<span class="section-kicker">Redireccionando</span>
+		<h1>Ingreso requerido</h1>
+	</section>
+}
+else
+{
+	<section class="dashboard-shell">
+		<div class="dashboard-hero">
+			<div>
+				<span class="section-kicker">Panel operativo</span>
+				<h1>Gestion de proveedores</h1>
+				<p>Solicitudes, aprobaciones y documentos organizados por etapa.</p>
+			</div>
 
-Welcome to your new app.
+			<div class="user-card">
+				<span>Sesion activa</span>
+				<strong>@session.Usuario.Nombre</strong>
+				<small>@session.Usuario.Rol · @session.Usuario.Email</small>
+				<form method="post" action="/account/logout">
+					<button class="secondary-button" type="submit">Cerrar sesion</button>
+				</form>
+			</div>
+		</div>
+
+		<div class="summary-grid" id="operacion">
+			<div class="summary-card highlight">
+				<span>Activas</span>
+				<strong>24</strong>
+				<small>En revision y aprobacion</small>
+			</div>
+			<div class="summary-card highlight">
+				<span>Por validar</span>
+				<strong>8</strong>
+				<small>Documentos pendientes</small>
+			</div>
+			<div class="summary-card">
+				<span>Completadas</span>
+				<strong>31</strong>
+				<small>Cierre contable</small>
+			</div>
+		</div>
+
+		<div class="dashboard-grid">
+			<div class="process-panel" id="flujo">
+				<span class="section-kicker">Flujo</span>
+				<div class="workflow-strip">
+					<div>
+						<span class="step-number">01</span>
+						<strong>Solicitud</strong>
+					</div>
+					<div>
+						<span class="step-number">02</span>
+						<strong>Proveedor</strong>
+					</div>
+					<div>
+						<span class="step-number">03</span>
+						<strong>Orden</strong>
+					</div>
+					<div>
+						<span class="step-number">04</span>
+						<strong>Factura</strong>
+					</div>
+					<div>
+						<span class="step-number">05</span>
+						<strong>Contabilidad</strong>
+					</div>
+				</div>
+			</div>
+
+			<div class="worklist-panel">
+				<span class="section-kicker">Prioridad</span>
+				<div class="worklist-row">
+					<strong>OC por aprobacion</strong>
+					<span>4</span>
+				</div>
+				<div class="worklist-row">
+					<strong>Facturas objetadas</strong>
+					<span>2</span>
+				</div>
+				<div class="worklist-row">
+					<strong>Soportes contables</strong>
+					<span>6</span>
+				</div>
+			</div>
+		</div>
+	</section>
+}
+
+@code {
+    private LoginResponse? session;
+
+	protected override void OnInitialized()
+	{
+		session = SessionService.GetCurrentSession();
+		if (session is null)
+		{
+			Navigation.NavigateTo("/login?returnUrl=/");
+		}
+	}
+}

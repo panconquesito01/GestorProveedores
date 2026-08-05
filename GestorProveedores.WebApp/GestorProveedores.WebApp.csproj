@@ -7,4 +7,9 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\GestorProveedores.Business\GestorProveedores.Business.csproj" />
+    <ProjectReference Include="..\GestorProveedores.Infrastructure\GestorProveedores.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

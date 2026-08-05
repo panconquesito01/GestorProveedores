@@ -16,7 +16,13 @@ Repositorio destino de la nueva solucion .NET:
 https://github.com/panconquesito01/GestorProveedores.git
 ```
 
-La carpeta origen contiene el sistema actual a migrar: `backend`, `frontend`, `db`, documentacion y archivos de despliegue. Todo inventario funcional, tecnico y de datos debe contrastarse contra esa ruta antes de reimplementar comportamiento en la nueva solucion .NET. El repositorio de GitHub corresponde al proyecto nuevo de migracion, no al sistema original.
+Base de datos SQL Server destino en desarrollo local:
+
+```text
+(localdb)\MSSQLLocalDB / GESTORPROVEEDORES
+```
+
+La carpeta origen contiene el sistema actual a migrar: `backend`, `frontend`, `db`, documentacion y archivos de despliegue. Todo inventario funcional, tecnico y de datos debe contrastarse contra esa ruta antes de reimplementar comportamiento en la nueva solucion .NET. El repositorio de GitHub corresponde al proyecto nuevo de migracion, no al sistema original. La base `GESTORPROVEEDORES` en `(localdb)\MSSQLLocalDB` corresponde al destino local de SQL Server para los scripts manuales y la configuracion de desarrollo.
 
 ## 1. Objetivo del plan
 
@@ -78,9 +84,8 @@ tests/
 database/
   sqlserver/
     001_schema.sql
-    002_seed_catalogos.sql
-    003_seed_usuarios_prueba.sql
-    004_indexes.sql
+    002_seed_desarrollo.sql
+    003_indexes_adicionales.sql
     rollback/
 docs/
   migration/
@@ -221,6 +226,7 @@ Cerrar decisiones tecnicas antes de crear la solucion .NET.
 - Version .NET definida.
 - Estrategia frontend definida: Blazor Web App interactivo server-side.
 - SQL Server disponible para desarrollo.
+- Base SQL Server local identificada: `(localdb)\MSSQLLocalDB / GESTORPROVEEDORES`.
 - Ruta del proyecto origen verificada: `C:\Users\david.rivera\Downloads\GestorProveedores-main\GestorProveedores-main`.
 - Decidido si `envio_proveedor` sera etapa real o solo evento de historial.
 
@@ -319,8 +325,7 @@ Disenar el esquema SQL Server equivalente y mejorado.
 ### Entregables
 
 - `database/sqlserver/001_schema.sql`.
-- `database/sqlserver/002_seed_catalogos.sql`.
-- `database/sqlserver/003_seed_usuarios_prueba.sql`.
+- `database/sqlserver/002_seed_desarrollo.sql`.
 - Scripts manuales SQL Server versionados, no migraciones EF.
 - Diagrama entidad-relacion.
 - Checklist de equivalencia contra PostgreSQL.
@@ -545,7 +550,7 @@ Exponer la funcionalidad a traves de HTTP cuando se requiera integracion externa
 ```text
 POST /api/auth/login
 GET  /api/catalogos/empresas
-GET  /api/catalogos/aprobadores?empresaId=1
+GET  /api/catalogos/aprobadores?empresa_id=1
 GET  /api/solicitudes?vista=...
 POST /api/solicitudes
 GET  /api/solicitudes/{id}
@@ -553,7 +558,11 @@ PUT  /api/solicitudes/{id}
 POST /api/workflow/{id}/paso1/devolver
 POST /api/workflow/{id}/paso1/siguiente
 POST /api/workflow/{id}/paso2/proveedor-erp
+POST /api/workflow/{id}/paso2/proveedor-erp/siguiente
 POST /api/workflow/{id}/paso2/proveedores-nuevos
+POST /api/workflow/{id}/proveedores/{proveedor_id}/documento
+POST /api/workflow/{id}/paso2/proveedores/{proveedor_id}/creado-en-erp
+POST /api/workflow/{id}/paso2/proveedores-nuevos/siguiente
 POST /api/workflow/{id}/paso3/seleccionar
 POST /api/workflow/{id}/paso4/orden-compra
 POST /api/workflow/{id}/paso5/solicitante
@@ -566,6 +575,24 @@ POST /api/workflow/{id}/paso9/objetar
 POST /api/workflow/{id}/paso9/reenviar-factura
 GET  /api/documentos/{id}
 ```
+
+### Estado actual de migracion WebApi y WebApp
+
+Completado funcionalmente con autenticacion real inicial:
+
+- `Auth`, `Catalogos`, `Solicitudes`, `Workflow` completo y descarga de `Documentos`.
+- `POST /api/auth/login` emite `access_token` JWT Bearer con claims de usuario y rol.
+- Endpoints `Catalogos`, `Solicitudes`, `Workflow` y `Documentos` exigen Bearer token y validan usuario activo por policy.
+- Autorizacion por rol y por actor asignado aplicada en los casos de uso migrados.
+- Carga de archivos soportada con `multipart/form-data` y persistencia inicial en SQL Server `VARBINARY(MAX)`.
+- Descarga de documentos protegida por participante de la solicitud, corrigiendo el endpoint abierto del origen.
+- `WebApp` tiene vista `/login` independiente sin menu, cookie protegida de sesion, redireccion a `/` tras login y dashboard inicial responsive con microanimaciones.
+
+Pendiente para cierre de seguridad final:
+
+- Configurar Swagger con autenticacion Bearer visible en UI.
+- Centralizar el mapeo de excepciones en middleware global.
+- Persistencia/renovacion formal de sesion si se decide usar ASP.NET Core Identity o SSO.
 
 ### Entregables
 

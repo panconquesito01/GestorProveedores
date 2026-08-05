@@ -1,30 +1,53 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">GestorProveedores.WebApp</a>
+﻿@inject WebAppSessionService SessionService
+
+<div class="brand-block">
+    <div class="brand-mark">GP</div>
+    <div>
+        <a class="navbar-brand" href="">Gestor Proveedores</a>
+        <span class="brand-caption">Control integral</span>
     </div>
 </div>
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
+    <nav class="nav flex-column" aria-label="Navegacion principal">
+        <div class="nav-section">Trabajo</div>
+        <div class="nav-item">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="nav-icon">IN</span> Inicio
             </NavLink>
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
+        <div class="nav-item">
+            <a class="nav-link" href="#operacion">
+                <span class="nav-icon">SO</span> Solicitudes
+            </a>
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
+        <div class="nav-item">
+            <a class="nav-link" href="#flujo">
+                <span class="nav-icon">FL</span> Flujo
+            </a>
+        </div>
+
+        <div class="nav-section">Sesion</div>
+        <div class="nav-session">
+            @if (session is not null)
+            {
+                <span>@session.Usuario.Rol</span>
+                <strong>@session.Usuario.Nombre</strong>
+                <form method="post" action="/account/logout">
+                    <button type="submit">Cerrar sesion</button>
+                </form>
+            }
         </div>
     </nav>
 </div>
+
+@code {
+    private LoginResponse? session;
+
+    protected override void OnInitialized() => session = SessionService.GetCurrentSession();
+}
 
