@@ -58,6 +58,7 @@ internal sealed class JwtTokenService : IJwtTokenService
 
     private static string ToApiRole(RolUsuario rol) => rol switch
     {
+        RolUsuario.Superusuario => "superusuario",
         RolUsuario.Solicitante => "solicitante",
         RolUsuario.Auxiliar => "auxiliar",
         RolUsuario.Analista => "analista",

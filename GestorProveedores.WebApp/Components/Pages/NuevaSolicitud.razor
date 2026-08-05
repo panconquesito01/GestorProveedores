@@ -1,0 +1,150 @@
+@page "/solicitudes/nueva"
+@inject WebAppSessionService SessionService
+@inject ICatalogoService CatalogoService
+@inject NavigationManager Navigation
+
+<PageTitle>Nueva solicitud - Gestor Proveedores</PageTitle>
+
+@if (session is null)
+{
+    <section class="loading-shell">
+        <span class="section-kicker">Redireccionando</span>
+        <h1>Ingreso requerido</h1>
+    </section>
+}
+else
+{
+    <section class="form-shell">
+        <a class="back-link" href="/admin">Volver al panel</a>
+
+        <div class="page-hero compact-hero">
+            <div>
+                <span class="section-kicker">Crear solicitud</span>
+                <h1>Nueva solicitud</h1>
+                <p>@(session.Usuario.EmpresaNombre ?? "Empresa no asignada")</p>
+            </div>
+            <div class="hero-stat stacked">
+                <span>Solicitante</span>
+                <strong>@session.Usuario.Nombre</strong>
+                <small>@session.Usuario.Email</small>
+            </div>
+        </div>
+
+        <div class="form-panel">
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <div class="form-alert">@Error</div>
+            }
+
+            @if (!CanCreateSolicitud)
+            {
+                <div class="empty-state compact-empty">
+                    <span class="section-kicker">Rol sin creacion</span>
+                    <h2>Solo el rol solicitante puede crear solicitudes</h2>
+                    <p>Usa el panel administrativo para entrar a las bandejas asignadas a tu rol.</p>
+                </div>
+            }
+            else if (session.Usuario.EmpresaId is null)
+            {
+                <div class="form-alert">Tu usuario no tiene empresa asociada.</div>
+            }
+            else
+            {
+                <form class="request-form" method="post" action="/solicitudes/crear">
+                    <div class="form-grid">
+                        <div>
+                            <label class="field-label" for="titulo">Titulo</label>
+                            <input id="titulo" class="premium-input" name="titulo" value="@Titulo" autocomplete="off" required />
+                        </div>
+
+                        <div>
+                            <label class="field-label" for="frecuencia">Frecuencia</label>
+                            <select id="frecuencia" class="premium-input" name="frecuencia">
+                                @foreach (var option in FrecuenciaOptions)
+                                {
+                                    if (IsSelectedFrecuencia(option))
+                                    {
+                                        <option value="@option" selected>@(string.IsNullOrEmpty(option) ? "No definida" : option)</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@option">@(string.IsNullOrEmpty(option) ? "No definida" : option)</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="field-label" for="aprobadorId">Aprobador</label>
+                            <select id="aprobadorId" class="premium-input" name="aprobadorId">
+                                @foreach (var aprobador in aprobadores)
+                                {
+                                    var value = aprobador.Id?.ToString() ?? string.Empty;
+                                    if (IsSelectedAprobador(value))
+                                    {
+                                        <option value="@value" selected>@aprobador.Nombre</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@value">@aprobador.Nombre</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <label class="field-label" for="descripcion">Descripcion</label>
+                    <textarea id="descripcion" class="premium-input premium-textarea" name="descripcion" required>@Descripcion</textarea>
+
+                    <div class="form-actions">
+                        <a class="panel-action secondary" href="/admin">Cancelar</a>
+                        <button class="premium-button inline-button" type="submit">Crear solicitud</button>
+                    </div>
+                </form>
+            }
+        </div>
+    </section>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery(Name = "titulo")]
+    public string? Titulo { get; set; }
+
+    [SupplyParameterFromQuery(Name = "descripcion")]
+    public string? Descripcion { get; set; }
+
+    [SupplyParameterFromQuery(Name = "frecuencia")]
+    public string? Frecuencia { get; set; }
+
+    [SupplyParameterFromQuery(Name = "aprobadorId")]
+    public string? AprobadorId { get; set; }
+
+    private static readonly IReadOnlyList<string> FrecuenciaOptions = [string.Empty, "Unica", "Mensual", "Trimestral", "Anual"];
+
+    private LoginResponse? session;
+    private IReadOnlyList<AprobadorOptionResponse> aprobadores = [];
+
+    private bool CanCreateSolicitud => string.Equals(session?.Usuario.Rol, "solicitante", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        session = SessionService.GetCurrentSession();
+        if (session is null)
+        {
+            Navigation.NavigateTo("/login?returnUrl=/solicitudes/nueva");
+            return;
+        }
+
+        if (CanCreateSolicitud && session.Usuario.EmpresaId is int empresaId)
+        {
+            aprobadores = await CatalogoService.ListarAprobadoresAsync(empresaId);
+        }
+    }
+
+    private bool IsSelectedFrecuencia(string option) => string.Equals(Frecuencia ?? string.Empty, option, StringComparison.OrdinalIgnoreCase);
+
+    private bool IsSelectedAprobador(string value) => string.Equals(AprobadorId ?? string.Empty, value, StringComparison.Ordinal);
+}

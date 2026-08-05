@@ -65,11 +65,11 @@ BEGIN
         CONSTRAINT UQ_Usuarios_Email UNIQUE (Email),
         CONSTRAINT UQ_Usuarios_Username UNIQUE (Username),
         CONSTRAINT FK_Usuarios_Empresas FOREIGN KEY (EmpresaId) REFERENCES dbo.Empresas(Id),
-        CONSTRAINT CK_Usuarios_Rol CHECK (Rol IN (N'solicitante', N'auxiliar', N'analista', N'aprobador', N'contable')),
+        CONSTRAINT CK_Usuarios_Rol CHECK (Rol IN (N'superusuario', N'solicitante', N'auxiliar', N'analista', N'aprobador', N'contable')),
         CONSTRAINT CK_Usuarios_EmpresaSegunRol CHECK
         (
             (Rol IN (N'solicitante', N'aprobador') AND EmpresaId IS NOT NULL)
-            OR (Rol IN (N'auxiliar', N'analista', N'contable') AND EmpresaId IS NULL)
+            OR (Rol IN (N'superusuario', N'auxiliar', N'analista', N'contable') AND EmpresaId IS NULL)
         )
     );
 END;
@@ -77,6 +77,33 @@ GO
 
 IF COL_LENGTH(N'dbo.Usuarios', N'UpdatedAt') IS NULL
     ALTER TABLE dbo.Usuarios ADD UpdatedAt DATETIMEOFFSET(0) NOT NULL CONSTRAINT DF_Usuarios_UpdatedAt DEFAULT SYSUTCDATETIME() WITH VALUES;
+GO
+
+IF OBJECT_ID(N'dbo.Usuarios', N'U') IS NOT NULL
+BEGIN
+    IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_Usuarios_Rol' AND parent_object_id = OBJECT_ID(N'dbo.Usuarios'))
+        ALTER TABLE dbo.Usuarios DROP CONSTRAINT CK_Usuarios_Rol;
+
+    ALTER TABLE dbo.Usuarios WITH CHECK ADD CONSTRAINT CK_Usuarios_Rol
+        CHECK (Rol IN (N'superusuario', N'solicitante', N'auxiliar', N'analista', N'aprobador', N'contable'));
+
+    ALTER TABLE dbo.Usuarios CHECK CONSTRAINT CK_Usuarios_Rol;
+END;
+GO
+
+IF OBJECT_ID(N'dbo.Usuarios', N'U') IS NOT NULL
+BEGIN
+    IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_Usuarios_EmpresaSegunRol' AND parent_object_id = OBJECT_ID(N'dbo.Usuarios'))
+        ALTER TABLE dbo.Usuarios DROP CONSTRAINT CK_Usuarios_EmpresaSegunRol;
+
+    ALTER TABLE dbo.Usuarios WITH CHECK ADD CONSTRAINT CK_Usuarios_EmpresaSegunRol CHECK
+    (
+        (Rol IN (N'solicitante', N'aprobador') AND EmpresaId IS NOT NULL)
+        OR (Rol IN (N'superusuario', N'auxiliar', N'analista', N'contable') AND EmpresaId IS NULL)
+    );
+
+    ALTER TABLE dbo.Usuarios CHECK CONSTRAINT CK_Usuarios_EmpresaSegunRol;
+END;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Usuarios_Rol' AND object_id = OBJECT_ID(N'dbo.Usuarios'))

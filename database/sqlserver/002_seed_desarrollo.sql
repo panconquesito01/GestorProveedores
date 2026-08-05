@@ -86,7 +86,8 @@ VALUES
     (9, N'Valentina Leon', N'valentina.leon@gestion.com', N'vleon', N'auxiliar', NULL),
     (10, N'Roberto Paez', N'roberto.paez@gestion.com', N'rpaez', N'analista', NULL),
     (11, N'Natalia Cortes', N'natalia.cortes@gestion.com', N'ncortes', N'analista', NULL),
-    (12, N'Hernan Vargas', N'hernan.vargas@contabilidad.com', N'hvargas', N'contable', NULL);
+    (12, N'Hernan Vargas', N'hernan.vargas@contabilidad.com', N'hvargas', N'contable', NULL),
+    (13, N'David Rivera', N'davidrivera@aurotech.co', N'davidrivera', N'superusuario', NULL);
 
 UPDATE destino
 SET
@@ -130,7 +131,7 @@ END;
 COMMIT TRANSACTION;
 GO
 
-SELECT Username, Rol, EmpresaId
+SELECT Username, Email, Rol, EmpresaId
 FROM dbo.Usuarios
 ORDER BY Id;
 GO

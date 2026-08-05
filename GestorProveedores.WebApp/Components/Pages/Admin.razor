@@ -1,0 +1,189 @@
+@page "/admin"
+@inject WebAppSessionService SessionService
+@inject ISolicitudService SolicitudService
+@inject ICatalogoService CatalogoService
+@inject NavigationManager Navigation
+
+<PageTitle>Panel administrativo - Gestor Proveedores</PageTitle>
+
+@if (session is null)
+{
+    <section class="loading-shell">
+        <span class="section-kicker">Redireccionando</span>
+        <h1>Ingreso requerido</h1>
+    </section>
+}
+else if (model is null)
+{
+    <section class="loading-shell">
+        <span class="section-kicker">Cargando</span>
+        <h1>Preparando panel</h1>
+    </section>
+}
+else
+{
+    <section class="admin-shell">
+        <div class="page-hero compact-hero">
+            <div>
+                <span class="section-kicker">Panel administrativo</span>
+                <h1>Centro de operacion</h1>
+                <p>@model.Subtitle</p>
+            </div>
+            <div class="hero-stat">
+                <span>@session.Usuario.Rol</span>
+                <strong>@model.TotalVisible</strong>
+                <small>@FormatSolicitudes(model.TotalVisible)</small>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="form-alert">@errorMessage</div>
+        }
+
+        <div class="admin-grid">
+            <article class="admin-card primary-admin-card">
+                <span class="section-kicker">Crear</span>
+                <h2>Nueva solicitud</h2>
+                <p>Radica requerimientos de proveedores, ordenes y facturas desde un solo formulario.</p>
+                @if (CanCreateSolicitud)
+                {
+                    <a class="panel-action" href="/solicitudes/nueva">Crear solicitud</a>
+                }
+                else
+                {
+                    <span class="disabled-action">Disponible para solicitantes</span>
+                }
+            </article>
+
+            <article class="admin-card">
+                <span class="section-kicker">Cargar</span>
+                <h2>Documentos y soportes</h2>
+                <p>Las cargas se habilitan dentro del detalle cuando la solicitud llega a la etapa asignada.</p>
+                <a class="panel-action secondary" href="/solicitudes">Abrir bandejas</a>
+            </article>
+
+            <article class="admin-card">
+                <span class="section-kicker">Catalogos</span>
+                <h2>Empresas y aprobadores</h2>
+                <div class="catalog-stats">
+                    <div><strong>@model.EmpresasCount</strong><span>Empresas</span></div>
+                    <div><strong>@model.AprobadoresCount</strong><span>Aprobadores</span></div>
+                </div>
+            </article>
+
+            @if (IsSuperusuario)
+            {
+                <article class="admin-card super-admin-card">
+                    <span class="section-kicker">Superusuario</span>
+                    <h2>Usuarios y permisos</h2>
+                    <p>Crea usuarios nuevos y revisa accesos activos.</p>
+                    <a class="panel-action" href="/superusuario">Abrir consola</a>
+                </article>
+            }
+        </div>
+
+        <section class="admin-section">
+            <div>
+                <span class="section-kicker">Bandejas por rol</span>
+                <h2>Trabajo disponible</h2>
+            </div>
+
+            <div class="admin-list">
+                @foreach (var row in model.Worklist)
+                {
+                    <a class="admin-row" href="@($"/solicitudes?vista={row.ViewName}")">
+                        <div>
+                            <strong>@row.Label</strong>
+                            <small>@row.Description</small>
+                        </div>
+                        <span>@row.Count</span>
+                    </a>
+                }
+            </div>
+        </section>
+    </section>
+}
+
+@code {
+    private LoginResponse? session;
+    private AdminModel? model;
+    private string? errorMessage;
+
+    private bool CanCreateSolicitud => string.Equals(session?.Usuario.Rol, "solicitante", StringComparison.OrdinalIgnoreCase);
+    private bool IsSuperusuario => string.Equals(session?.Usuario.Rol, "superusuario", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        session = SessionService.GetCurrentSession();
+        if (session is null)
+        {
+            Navigation.NavigateTo("/login?returnUrl=/admin");
+            return;
+        }
+
+        try
+        {
+            model = await BuildModelAsync(session, CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            errorMessage = exception.Message;
+            model = new AdminModel(GetSubtitle(session.Usuario.Rol), 0, 0, 0, []);
+        }
+    }
+
+    private async Task<AdminModel> BuildModelAsync(LoginResponse currentSession, CancellationToken cancellationToken)
+    {
+        var views = SolicitudViewCatalog.GetForRole(currentSession.Usuario.Rol);
+        var rows = new List<AdminWorklistRow>();
+        var visibleIds = new HashSet<int>();
+
+        foreach (var view in views)
+        {
+            var items = await SolicitudService.ListarAsync(
+                new SolicitudListQuery(view.Name, null, null, null, null),
+                currentSession.Usuario.Id,
+                cancellationToken);
+
+            foreach (var item in items)
+            {
+                visibleIds.Add(item.Id);
+            }
+
+            rows.Add(new AdminWorklistRow(view.Name, view.Label, view.Description, items.Count));
+        }
+
+        var empresas = await CatalogoService.ListarEmpresasAsync(cancellationToken);
+        var aprobadores = currentSession.Usuario.EmpresaId is int empresaId
+            ? await CatalogoService.ListarAprobadoresAsync(empresaId, cancellationToken)
+            : [];
+
+        return new AdminModel(
+            GetSubtitle(currentSession.Usuario.Rol),
+            visibleIds.Count,
+            empresas.Count,
+            aprobadores.Count(option => option.Id is not null),
+            rows);
+    }
+
+    private static string GetSubtitle(string role) => role switch
+    {
+        "solicitante" => "Crea solicitudes, revisa tus pendientes y consulta la trazabilidad de cada radicado.",
+        "auxiliar" => "Centraliza revision inicial, proveedores, ordenes de compra y soportes contables.",
+        "analista" => "Accede a seleccion de proveedor y revision de facturas asignadas.",
+        "aprobador" => "Revisa ordenes de compra pendientes de aprobacion.",
+        "contable" => "Valida facturas y cierres ERP asignados a contabilidad.",
+        _ => "Accesos operativos disponibles para tu perfil."
+    };
+
+    private static string FormatSolicitudes(int count) => count == 1 ? "solicitud visible" : "solicitudes visibles";
+
+    private sealed record AdminWorklistRow(string ViewName, string Label, string Description, int Count);
+    private sealed record AdminModel(
+        string Subtitle,
+        int TotalVisible,
+        int EmpresasCount,
+        int AprobadoresCount,
+        IReadOnlyList<AdminWorklistRow> Worklist);
+}

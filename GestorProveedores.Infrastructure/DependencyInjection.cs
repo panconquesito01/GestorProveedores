@@ -25,11 +25,13 @@ public static class DependencyInjection
         services.AddScoped<IDocumentoRepository, DocumentoRepository>();
         services.AddScoped<IEmpresaReadRepository, EmpresaReadRepository>();
         services.AddScoped<IUsuarioReadRepository, UsuarioReadRepository>();
+        services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<ISolicitudRepository, SolicitudRepository>();
         services.AddScoped<IAsignacionUsuarioService, RoundRobinAsignacionUsuarioService>();
         services.AddScoped<IRadicadoGenerator, SqlServerRadicadoGenerator>();
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<GestorProveedoresDbContext>());
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IPasswordHashGenerator, AspNetPasswordHashGenerator>();
         services.AddScoped<IPasswordHashVerifier, AspNetPasswordHashVerifier>();
 
         return services;

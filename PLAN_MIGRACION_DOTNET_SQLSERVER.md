@@ -587,6 +587,9 @@ Completado funcionalmente con autenticacion real inicial:
 - Carga de archivos soportada con `multipart/form-data` y persistencia inicial en SQL Server `VARBINARY(MAX)`.
 - Descarga de documentos protegida por participante de la solicitud, corrigiendo el endpoint abierto del origen.
 - `WebApp` tiene vista `/login` independiente sin menu, cookie protegida de sesion, redireccion a `/` tras login y dashboard inicial responsive con microanimaciones.
+- `WebApp` tiene bandeja `/solicitudes` por rol y detalle `/solicitudes/{id}` conectados a `ISolicitudService`, con navegacion desde menu y dashboard.
+- `WebApp` tiene panel administrativo `/admin` como hub operativo por rol y formulario `/solicitudes/nueva` para radicar solicitudes reales.
+- `ObtenerDetalleAsync` valida acceso por participante/asignacion antes de retornar la solicitud.
 
 Pendiente para cierre de seguridad final:
 
@@ -732,8 +735,8 @@ src/GestorProveedores.WebApp/
 
 ### Entregables
 
-- WebApp Blazor funcional.
-- Layout por rol.
+- WebApp Blazor funcional con login separado, sesion por cookie protegida, dashboard inicial, panel administrativo, bandeja, creacion y detalle conectados a `Business`.
+- Layout por rol con menu principal posterior al login.
 - Paginas principales migradas.
 - Componentes reutilizables.
 - Formularios con validacion.
@@ -742,7 +745,8 @@ src/GestorProveedores.WebApp/
 
 ### Criterios de salida
 
-- Login funciona.
+- Login funciona y redirige al dashboard principal.
+- Dashboard no usa datos demostrativos; sus metricas salen de `ISolicitudService` segun el rol autenticado.
 - Listados por rol funcionan.
 - Detalle de solicitud funciona.
 - Todas las acciones del workflow funcionan.

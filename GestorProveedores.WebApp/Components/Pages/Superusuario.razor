@@ -1,0 +1,210 @@
+@page "/superusuario"
+@inject WebAppSessionService SessionService
+@inject IUsuarioAdminService UsuarioAdminService
+@inject ICatalogoService CatalogoService
+@inject NavigationManager Navigation
+
+<PageTitle>Superusuario - Gestor Proveedores</PageTitle>
+
+@if (session is null)
+{
+    <section class="loading-shell">
+        <span class="section-kicker">Redireccionando</span>
+        <h1>Ingreso requerido</h1>
+    </section>
+}
+else if (!IsSuperusuario)
+{
+    <section class="super-shell">
+        <div class="empty-state compact-empty">
+            <span class="section-kicker">Acceso restringido</span>
+            <h1>Consola de superusuario</h1>
+            <p>Esta vista solo esta disponible para el rol superusuario.</p>
+        </div>
+    </section>
+}
+else if (usuarios is null)
+{
+    <section class="loading-shell">
+        <span class="section-kicker">Cargando</span>
+        <h1>Preparando consola</h1>
+    </section>
+}
+else
+{
+    <section class="super-shell">
+        <div class="page-hero compact-hero">
+            <div>
+                <span class="section-kicker">Superusuario</span>
+                <h1>Usuarios y permisos</h1>
+                <p>Crea usuarios, asigna roles y revisa el acceso completo del sistema.</p>
+            </div>
+            <div class="hero-stat">
+                <span>Usuarios activos</span>
+                <strong>@usuarios.Count</strong>
+                <small>@session.Usuario.Email</small>
+            </div>
+        </div>
+
+        @if (Creado is not null)
+        {
+            <div class="form-alert success-alert">Usuario creado correctamente.</div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <div class="form-alert">@Error</div>
+        }
+
+        <div class="super-grid">
+            <section class="form-panel">
+                <span class="section-kicker">Crear usuario</span>
+                <form class="request-form" method="post" action="/superusuario/usuarios/crear">
+                    <div class="form-grid two-columns">
+                        <div>
+                            <label class="field-label" for="nombre">Nombre</label>
+                            <input id="nombre" class="premium-input" name="nombre" value="@Nombre" autocomplete="name" required />
+                        </div>
+                        <div>
+                            <label class="field-label" for="email">Correo</label>
+                            <input id="email" class="premium-input" name="email" type="email" value="@Email" autocomplete="email" required />
+                        </div>
+                        <div>
+                            <label class="field-label" for="username">Usuario</label>
+                            <input id="username" class="premium-input" name="username" value="@Username" autocomplete="username" required />
+                        </div>
+                        <div>
+                            <label class="field-label" for="password">Contrasena temporal</label>
+                            <input id="password" class="premium-input" name="password" type="password" autocomplete="new-password" required />
+                        </div>
+                        <div>
+                            <label class="field-label" for="rol">Rol</label>
+                            <select id="rol" class="premium-input" name="rol" required>
+                                @foreach (var option in RoleOptions)
+                                {
+                                    if (IsSelectedRole(option.Value))
+                                    {
+                                        <option value="@option.Value" selected>@option.Label</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@option.Value">@option.Label</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label class="field-label" for="empresaId">Empresa</label>
+                            <select id="empresaId" class="premium-input" name="empresaId">
+                                <option value="">No aplica</option>
+                                @foreach (var empresa in empresas)
+                                {
+                                    if (IsSelectedEmpresa(empresa.Id))
+                                    {
+                                        <option value="@empresa.Id" selected>@empresa.Nombre</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@empresa.Id">@empresa.Nombre</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <p class="muted-copy">Solicitante y aprobador requieren empresa. Los demas roles, incluido superusuario, deben quedar sin empresa.</p>
+                    <div class="form-actions">
+                        <button class="premium-button inline-button" type="submit">Crear usuario</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="admin-section">
+                <div>
+                    <span class="section-kicker">Usuarios</span>
+                    <h2>Accesos actuales</h2>
+                </div>
+                <div class="users-table" role="table" aria-label="Usuarios del sistema">
+                    <div class="users-head" role="row">
+                        <span>Usuario</span>
+                        <span>Rol</span>
+                        <span>Empresa</span>
+                    </div>
+                    @foreach (var usuario in usuarios)
+                    {
+                        <div class="user-row" role="row">
+                            <span class="request-main">
+                                <strong>@usuario.Nombre</strong>
+                                <small>@usuario.Email · @usuario.Username</small>
+                            </span>
+                            <span><span class="status-badge active">@usuario.Rol</span></span>
+                            <span>@(usuario.EmpresaNombre ?? "Sin empresa")</span>
+                        </div>
+                    }
+                </div>
+            </section>
+        </div>
+    </section>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery(Name = "creado")]
+    public int? Creado { get; set; }
+
+    [SupplyParameterFromQuery(Name = "nombre")]
+    public string? Nombre { get; set; }
+
+    [SupplyParameterFromQuery(Name = "email")]
+    public string? Email { get; set; }
+
+    [SupplyParameterFromQuery(Name = "username")]
+    public string? Username { get; set; }
+
+    [SupplyParameterFromQuery(Name = "rol")]
+    public string? Rol { get; set; }
+
+    [SupplyParameterFromQuery(Name = "empresaId")]
+    public int? EmpresaId { get; set; }
+
+    private static readonly IReadOnlyList<RoleOption> RoleOptions =
+    [
+        new("superusuario", "Superusuario"),
+        new("solicitante", "Solicitante"),
+        new("aprobador", "Aprobador"),
+        new("auxiliar", "Auxiliar"),
+        new("analista", "Analista"),
+        new("contable", "Contable")
+    ];
+
+    private LoginResponse? session;
+    private IReadOnlyList<UsuarioResponse>? usuarios;
+    private IReadOnlyList<EmpresaResponse> empresas = [];
+
+    private bool IsSuperusuario => string.Equals(session?.Usuario.Rol, "superusuario", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        session = SessionService.GetCurrentSession();
+        if (session is null)
+        {
+            Navigation.NavigateTo("/login?returnUrl=/superusuario");
+            return;
+        }
+
+        if (!IsSuperusuario)
+        {
+            return;
+        }
+
+        empresas = await CatalogoService.ListarEmpresasAsync();
+        usuarios = await UsuarioAdminService.ListarAsync(session.Usuario.Id);
+    }
+
+    private bool IsSelectedRole(string role) => string.Equals(Rol, role, StringComparison.OrdinalIgnoreCase);
+
+    private bool IsSelectedEmpresa(int empresaId) => EmpresaId == empresaId;
+
+    private sealed record RoleOption(string Value, string Label);
+}

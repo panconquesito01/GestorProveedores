@@ -26,7 +26,7 @@ internal sealed class WorkflowService(
         CancellationToken cancellationToken = default)
     {
         var auxiliar = await ObtenerAuxiliarAsync(usuarioId, cancellationToken);
-        var solicitud = await ObtenerSolicitudPaso1Async(id, auxiliar.Id, cancellationToken);
+        var solicitud = await ObtenerSolicitudPaso1Async(id, auxiliar, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(request.Comentario))
         {
@@ -55,7 +55,7 @@ internal sealed class WorkflowService(
         CancellationToken cancellationToken = default)
     {
         var auxiliar = await ObtenerAuxiliarAsync(usuarioId, cancellationToken);
-        var solicitud = await ObtenerSolicitudPaso1Async(id, auxiliar.Id, cancellationToken);
+        var solicitud = await ObtenerSolicitudPaso1Async(id, auxiliar, cancellationToken);
 
         solicitud.CambiarEtapa(EtapaSolicitud.RevisionProveedores, EstadoSolicitud.EnProceso);
 
@@ -77,7 +77,7 @@ internal sealed class WorkflowService(
         CancellationToken cancellationToken = default)
     {
         var auxiliar = await ObtenerAuxiliarAsync(usuarioId, cancellationToken);
-        var solicitud = await ObtenerSolicitudPaso2Async(id, auxiliar.Id, cancellationToken);
+        var solicitud = await ObtenerSolicitudPaso2Async(id, auxiliar, cancellationToken);
 
         foreach (var proveedor in solicitud.Proveedores.ToList())
         {
@@ -112,7 +112,7 @@ internal sealed class WorkflowService(
         CancellationToken cancellationToken = default)
     {
         var auxiliar = await ObtenerAuxiliarAsync(usuarioId, cancellationToken);
-        var solicitud = await ObtenerSolicitudPaso2Async(id, auxiliar.Id, cancellationToken);
+        var solicitud = await ObtenerSolicitudPaso2Async(id, auxiliar, cancellationToken);
 
         if (solicitud.ProveedorOrigen is not OrigenProveedor.ErpExistente ||
             !solicitud.Proveedores.Any(proveedor => proveedor.Origen is OrigenProveedor.ErpExistente))
@@ -142,7 +142,7 @@ internal sealed class WorkflowService(
         CancellationToken cancellationToken = default)
     {
         var auxiliar = await ObtenerAuxiliarAsync(usuarioId, cancellationToken);
-        var solicitud = await ObtenerSolicitudPaso2Async(id, auxiliar.Id, cancellationToken);
+        var solicitud = await ObtenerSolicitudPaso2Async(id, auxiliar, cancellationToken);
 
         if (request.Candidatos is null || request.Candidatos.Count > 3)
         {
@@ -208,7 +208,7 @@ internal sealed class WorkflowService(
         CancellationToken cancellationToken = default)
     {
         var auxiliar = await ObtenerAuxiliarAsync(usuarioId, cancellationToken);
-        var solicitud = await ObtenerSolicitudPaso2Async(id, auxiliar.Id, cancellationToken);
+        var solicitud = await ObtenerSolicitudPaso2Async(id, auxiliar, cancellationToken);
         var proveedor = solicitud.Proveedores.FirstOrDefault(proveedor => proveedor.Id == proveedorId)
             ?? throw new DomainValidationException(
                 "workflow.paso2.proveedor_no_encontrado",
@@ -227,7 +227,7 @@ internal sealed class WorkflowService(
         CancellationToken cancellationToken = default)
     {
         var auxiliar = await ObtenerAuxiliarAsync(usuarioId, cancellationToken);
-        var solicitud = await ObtenerSolicitudPaso2Async(id, auxiliar.Id, cancellationToken);
+        var solicitud = await ObtenerSolicitudPaso2Async(id, auxiliar, cancellationToken);
 
         var proveedoresValidados = solicitud.Proveedores
             .Where(proveedor => proveedor.Origen is OrigenProveedor.Nuevo && proveedor.Validado)
@@ -273,7 +273,7 @@ internal sealed class WorkflowService(
         CancellationToken cancellationToken = default)
     {
         var analista = await ObtenerAnalistaAsync(usuarioId, cancellationToken);
-        var solicitud = await ObtenerSolicitudPaso3Async(id, analista.Id, cancellationToken);
+        var solicitud = await ObtenerSolicitudPaso3Async(id, analista, cancellationToken);
         var proveedorSeleccionado = solicitud.Proveedores.FirstOrDefault(proveedor => proveedor.Id == request.ProveedorId);
 
         if (proveedorSeleccionado is null || !proveedorSeleccionado.Validado)
@@ -314,7 +314,7 @@ internal sealed class WorkflowService(
         var auxiliar = await ObtenerAuxiliarAsync(usuarioId, cancellationToken);
         var solicitud = await ObtenerSolicitudAsignadaAsync(
             id,
-            auxiliar.Id,
+            auxiliar,
             solicitud => solicitud.AuxiliarId,
             "workflow.auxiliar.no_asignado",
             "No eres el auxiliar asignado a esta solicitud.",
@@ -354,7 +354,7 @@ internal sealed class WorkflowService(
             "La solicitud no esta lista para cargar orden de compra.",
             cancellationToken);
 
-        ValidarActorAsignado(solicitud.AuxiliarId, auxiliar.Id, "workflow.auxiliar.no_asignado", "No eres el auxiliar asignado a esta solicitud.");
+        ValidarActorAsignado(solicitud.AuxiliarId, auxiliar, "workflow.auxiliar.no_asignado", "No eres el auxiliar asignado a esta solicitud.");
 
         solicitudRepository.AddDocumento(Documento.Crear(
             solicitud.Id,
@@ -393,7 +393,7 @@ internal sealed class WorkflowService(
             "La solicitud no esta en revision de orden de compra por el solicitante.",
             cancellationToken);
 
-        ValidarActorAsignado(solicitud.SolicitanteId, solicitante.Id, "workflow.solicitante.no_asignado", "No eres el solicitante asignado a esta solicitud.");
+        ValidarActorAsignado(solicitud.SolicitanteId, solicitante, "workflow.solicitante.no_asignado", "No eres el solicitante asignado a esta solicitud.");
 
         if (!request.Aprobado)
         {
@@ -446,7 +446,7 @@ internal sealed class WorkflowService(
             "La solicitud no esta en revision de orden de compra por aprobador.",
             cancellationToken);
 
-        ValidarActorAsignado(solicitud.AprobadorId, aprobador.Id, "workflow.aprobador.no_asignado", "No eres el aprobador asignado a esta solicitud.");
+        ValidarActorAsignado(solicitud.AprobadorId, aprobador, "workflow.aprobador.no_asignado", "No eres el aprobador asignado a esta solicitud.");
 
         if (!request.Aprobado)
         {
@@ -492,7 +492,7 @@ internal sealed class WorkflowService(
             "La solicitud no esta lista para cargar factura.",
             cancellationToken);
 
-        ValidarActorAsignado(solicitud.AnalistaId, analista.Id, "workflow.analista.no_asignado", "No eres el analista asignado a esta solicitud.");
+        ValidarActorAsignado(solicitud.AnalistaId, analista, "workflow.analista.no_asignado", "No eres el analista asignado a esta solicitud.");
 
         solicitudRepository.AddDocumento(Documento.Crear(
             solicitud.Id,
@@ -531,7 +531,7 @@ internal sealed class WorkflowService(
             "La solicitud no esta en revision de factura por el solicitante.",
             cancellationToken);
 
-        ValidarActorAsignado(solicitud.SolicitanteId, solicitante.Id, "workflow.solicitante.no_asignado", "No eres el solicitante asignado a esta solicitud.");
+        ValidarActorAsignado(solicitud.SolicitanteId, solicitante, "workflow.solicitante.no_asignado", "No eres el solicitante asignado a esta solicitud.");
 
         if (!request.Aprobado)
         {
@@ -578,7 +578,7 @@ internal sealed class WorkflowService(
             "La solicitud no esta lista para enviar soportes a contabilidad.",
             cancellationToken);
 
-        ValidarActorAsignado(solicitud.AuxiliarId, auxiliar.Id, "workflow.auxiliar.no_asignado", "No eres el auxiliar asignado a esta solicitud.");
+        ValidarActorAsignado(solicitud.AuxiliarId, auxiliar, "workflow.auxiliar.no_asignado", "No eres el auxiliar asignado a esta solicitud.");
 
         foreach (var soporte in soportes)
         {
@@ -694,7 +694,7 @@ internal sealed class WorkflowService(
             "La solicitud no tiene una factura objetada por contabilidad.",
             cancellationToken);
 
-        ValidarActorAsignado(solicitud.AuxiliarId, auxiliar.Id, "workflow.auxiliar.no_asignado", "No eres el auxiliar asignado a esta solicitud.");
+        ValidarActorAsignado(solicitud.AuxiliarId, auxiliar, "workflow.auxiliar.no_asignado", "No eres el auxiliar asignado a esta solicitud.");
 
         solicitudRepository.AddDocumento(Documento.Crear(
             solicitud.Id,
@@ -729,7 +729,7 @@ internal sealed class WorkflowService(
         var usuario = await usuarioReadRepository.GetActiveByIdAsync(usuarioId.Value, cancellationToken)
             ?? throw new UnauthorizedAccessException("Usuario no valido.");
 
-        if (usuario.Rol is not RolUsuario.Auxiliar)
+        if (usuario.Rol is not RolUsuario.Auxiliar and not RolUsuario.Superusuario)
         {
             throw new ForbiddenException("workflow.auxiliar.rol_invalido", "Solo el rol auxiliar puede ejecutar esta accion.");
         }
@@ -747,7 +747,7 @@ internal sealed class WorkflowService(
         var usuario = await usuarioReadRepository.GetActiveByIdAsync(usuarioId.Value, cancellationToken)
             ?? throw new UnauthorizedAccessException("Usuario no valido.");
 
-        if (usuario.Rol is not RolUsuario.Solicitante)
+        if (usuario.Rol is not RolUsuario.Solicitante and not RolUsuario.Superusuario)
         {
             throw new ForbiddenException("workflow.solicitante.rol_invalido", "Solo el rol solicitante puede ejecutar esta accion.");
         }
@@ -765,7 +765,7 @@ internal sealed class WorkflowService(
         var usuario = await usuarioReadRepository.GetActiveByIdAsync(usuarioId.Value, cancellationToken)
             ?? throw new UnauthorizedAccessException("Usuario no valido.");
 
-        if (usuario.Rol is not RolUsuario.Aprobador)
+        if (usuario.Rol is not RolUsuario.Aprobador and not RolUsuario.Superusuario)
         {
             throw new ForbiddenException("workflow.aprobador.rol_invalido", "Solo el rol aprobador puede ejecutar esta accion.");
         }
@@ -783,7 +783,7 @@ internal sealed class WorkflowService(
         var usuario = await usuarioReadRepository.GetActiveByIdAsync(usuarioId.Value, cancellationToken)
             ?? throw new UnauthorizedAccessException("Usuario no valido.");
 
-        if (usuario.Rol is not RolUsuario.Contable)
+        if (usuario.Rol is not RolUsuario.Contable and not RolUsuario.Superusuario)
         {
             throw new ForbiddenException("workflow.contable.rol_invalido", "Solo el rol contable puede ejecutar esta accion.");
         }
@@ -801,7 +801,7 @@ internal sealed class WorkflowService(
         var usuario = await usuarioReadRepository.GetActiveByIdAsync(usuarioId.Value, cancellationToken)
             ?? throw new UnauthorizedAccessException("Usuario no valido.");
 
-        if (usuario.Rol is not RolUsuario.Analista)
+        if (usuario.Rol is not RolUsuario.Analista and not RolUsuario.Superusuario)
         {
             throw new ForbiddenException("workflow.analista.rol_invalido", "Solo el rol analista puede ejecutar esta accion.");
         }
@@ -809,7 +809,7 @@ internal sealed class WorkflowService(
         return usuario;
     }
 
-    private async Task<Solicitud> ObtenerSolicitudPaso1Async(int id, int auxiliarId, CancellationToken cancellationToken)
+    private async Task<Solicitud> ObtenerSolicitudPaso1Async(int id, Usuario auxiliar, CancellationToken cancellationToken)
     {
         var solicitud = await solicitudRepository.GetByIdForUpdateAsync(id, cancellationToken)
             ?? throw new NotFoundException("solicitudes.no_encontrada", "Solicitud no encontrada.");
@@ -821,7 +821,7 @@ internal sealed class WorkflowService(
                 $"La solicitud esta en la etapa '{solicitud.Etapa}', no se puede procesar en el paso 1.");
         }
 
-        if (solicitud.AuxiliarId != auxiliarId)
+        if (!EsSuperusuario(auxiliar) && solicitud.AuxiliarId != auxiliar.Id)
         {
             throw new ForbiddenException("workflow.auxiliar.no_asignado", "No eres el auxiliar asignado a esta solicitud.");
         }
@@ -829,7 +829,7 @@ internal sealed class WorkflowService(
         return solicitud;
     }
 
-    private async Task<Solicitud> ObtenerSolicitudPaso2Async(int id, int auxiliarId, CancellationToken cancellationToken)
+    private async Task<Solicitud> ObtenerSolicitudPaso2Async(int id, Usuario auxiliar, CancellationToken cancellationToken)
     {
         var solicitud = await solicitudRepository.GetByIdForUpdateAsync(id, cancellationToken)
             ?? throw new NotFoundException("solicitudes.no_encontrada", "Solicitud no encontrada.");
@@ -841,7 +841,7 @@ internal sealed class WorkflowService(
                 $"La solicitud esta en la etapa '{solicitud.Etapa}', no se puede procesar en el paso 2.");
         }
 
-        if (solicitud.AuxiliarId != auxiliarId)
+        if (!EsSuperusuario(auxiliar) && solicitud.AuxiliarId != auxiliar.Id)
         {
             throw new ForbiddenException("workflow.auxiliar.no_asignado", "No eres el auxiliar asignado a esta solicitud.");
         }
@@ -849,7 +849,7 @@ internal sealed class WorkflowService(
         return solicitud;
     }
 
-    private async Task<Solicitud> ObtenerSolicitudPaso3Async(int id, int analistaId, CancellationToken cancellationToken)
+    private async Task<Solicitud> ObtenerSolicitudPaso3Async(int id, Usuario analista, CancellationToken cancellationToken)
     {
         var solicitud = await solicitudRepository.GetByIdForUpdateAsync(id, cancellationToken)
             ?? throw new NotFoundException("solicitudes.no_encontrada", "Solicitud no encontrada.");
@@ -861,7 +861,7 @@ internal sealed class WorkflowService(
                 $"La solicitud esta en la etapa '{solicitud.Etapa}', no se puede procesar en el paso 3.");
         }
 
-        if (solicitud.AnalistaId != analistaId)
+        if (!EsSuperusuario(analista) && solicitud.AnalistaId != analista.Id)
         {
             throw new ForbiddenException("workflow.analista.no_asignado", "No eres el analista asignado a esta solicitud.");
         }
@@ -889,7 +889,7 @@ internal sealed class WorkflowService(
 
     private async Task<Solicitud> ObtenerSolicitudAsignadaAsync(
         int id,
-        int actorId,
+        Usuario actor,
         Func<Solicitud, int?> asignacionSelector,
         string code,
         string message,
@@ -898,7 +898,7 @@ internal sealed class WorkflowService(
         var solicitud = await solicitudRepository.GetByIdForUpdateAsync(id, cancellationToken)
             ?? throw new NotFoundException("solicitudes.no_encontrada", "Solicitud no encontrada.");
 
-        ValidarActorAsignado(asignacionSelector(solicitud), actorId, code, message);
+        ValidarActorAsignado(asignacionSelector(solicitud), actor, code, message);
 
         return solicitud;
     }
@@ -925,13 +925,15 @@ internal sealed class WorkflowService(
             actorId: null));
     }
 
-    private static void ValidarActorAsignado(int? asignadoId, int actorId, string code, string message)
+    private static void ValidarActorAsignado(int? asignadoId, Usuario actor, string code, string message)
     {
-        if (asignadoId != actorId)
+        if (!EsSuperusuario(actor) && asignadoId != actor.Id)
         {
             throw new ForbiddenException(code, message);
         }
     }
+
+    private static bool EsSuperusuario(Usuario usuario) => usuario.Rol is RolUsuario.Superusuario;
 
     private static void RequerirComentario(string? comentario, string code, string message)
     {

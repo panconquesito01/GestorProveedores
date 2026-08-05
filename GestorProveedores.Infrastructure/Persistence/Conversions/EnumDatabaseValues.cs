@@ -6,6 +6,7 @@ internal static class EnumDatabaseValues
 {
     public static string ToDatabaseValue(RolUsuario value) => value switch
     {
+        RolUsuario.Superusuario => "superusuario",
         RolUsuario.Solicitante => "solicitante",
         RolUsuario.Auxiliar => "auxiliar",
         RolUsuario.Analista => "analista",
@@ -16,6 +17,7 @@ internal static class EnumDatabaseValues
 
     public static RolUsuario ToRolUsuario(string value) => value switch
     {
+        "superusuario" => RolUsuario.Superusuario,
         "solicitante" => RolUsuario.Solicitante,
         "auxiliar" => RolUsuario.Auxiliar,
         "analista" => RolUsuario.Analista,

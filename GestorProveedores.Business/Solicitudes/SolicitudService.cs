@@ -14,6 +14,7 @@ internal sealed class SolicitudService(
 {
     private static readonly IReadOnlyDictionary<string, VistaSolicitud> Vistas = new Dictionary<string, VistaSolicitud>(StringComparer.OrdinalIgnoreCase)
     {
+        ["superusuario_todas"] = new([RolUsuario.Superusuario], null, SolicitudAsignacionCampo.Ninguno),
         ["solicitante_mias"] = new([RolUsuario.Solicitante], null, SolicitudAsignacionCampo.Solicitante),
         ["solicitante_oc_revisar"] = new([RolUsuario.Solicitante], [EtapaSolicitud.RevisionOcSolicitante], SolicitudAsignacionCampo.Solicitante),
         ["solicitante_facturas_revisar"] = new([RolUsuario.Solicitante], [EtapaSolicitud.RevisionFacturaSolicitante], SolicitudAsignacionCampo.Solicitante),
@@ -170,10 +171,15 @@ internal sealed class SolicitudService(
         int? usuarioId,
         CancellationToken cancellationToken = default)
     {
-        _ = await ObtenerUsuarioActualAsync(usuarioId, cancellationToken);
+        var usuario = await ObtenerUsuarioActualAsync(usuarioId, cancellationToken);
 
         var solicitud = await solicitudRepository.GetDetailByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException("solicitudes.no_encontrada", "Solicitud no encontrada.");
+
+        if (!TieneAcceso(usuario, solicitud))
+        {
+            throw new ForbiddenException("solicitudes.detalle.sin_permiso", "No tienes acceso a esta solicitud.");
+        }
 
         return SolicitudMapper.ToDetalle(solicitud);
     }
@@ -200,6 +206,17 @@ internal sealed class SolicitudService(
                 "El aprobador seleccionado no existe, no esta activo o no pertenece a la empresa del solicitante.");
         }
     }
+
+    private static bool TieneAcceso(Usuario usuario, Solicitud solicitud) => usuario.Rol switch
+    {
+        RolUsuario.Superusuario => true,
+        RolUsuario.Solicitante => solicitud.SolicitanteId == usuario.Id,
+        RolUsuario.Auxiliar => solicitud.AuxiliarId == usuario.Id,
+        RolUsuario.Analista => solicitud.AnalistaId == usuario.Id,
+        RolUsuario.Aprobador => solicitud.AprobadorId == usuario.Id,
+        RolUsuario.Contable => true,
+        _ => false
+    };
 
     private sealed record VistaSolicitud(
         IReadOnlyCollection<RolUsuario> Roles,

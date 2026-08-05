@@ -1,0 +1,175 @@
+@page "/solicitudes/{Id:int}"
+@inject WebAppSessionService SessionService
+@inject ISolicitudService SolicitudService
+@inject NavigationManager Navigation
+
+<PageTitle>Detalle solicitud - Gestor Proveedores</PageTitle>
+
+@if (session is null)
+{
+    <section class="loading-shell">
+        <span class="section-kicker">Redireccionando</span>
+        <h1>Ingreso requerido</h1>
+    </section>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <section class="detail-shell">
+        <a class="back-link" href="/solicitudes">Volver a solicitudes</a>
+        <div class="form-alert">@errorMessage</div>
+    </section>
+}
+else if (solicitud is null)
+{
+    <section class="loading-shell">
+        <span class="section-kicker">Cargando</span>
+        <h1>Preparando detalle</h1>
+    </section>
+}
+else
+{
+    <section class="detail-shell">
+        <a class="back-link" href="/solicitudes">Volver a solicitudes</a>
+
+        @if (Creada == "1")
+        {
+            <div class="form-alert success-alert">Solicitud creada correctamente.</div>
+        }
+
+        <div class="page-hero detail-hero">
+            <div>
+                <span class="section-kicker">@solicitud.Radicado</span>
+                <h1>@solicitud.Titulo</h1>
+                <p>@solicitud.Descripcion</p>
+            </div>
+            <div class="hero-stat stacked">
+                <span>@FormatStage(solicitud.Etapa)</span>
+                <strong class="status-badge @GetStatusClass(solicitud.Estado)">@FormatStage(solicitud.Estado)</strong>
+                <small>Actualizada @FormatDate(solicitud.UpdatedAt)</small>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <article class="detail-card">
+                <span class="section-kicker">Datos generales</span>
+                <dl class="metadata-list">
+                    <div><dt>Empresa</dt><dd>@solicitud.EmpresaNombre</dd></div>
+                    <div><dt>Solicitante</dt><dd>@solicitud.SolicitanteNombre</dd></div>
+                    <div><dt>Frecuencia</dt><dd>@(solicitud.Frecuencia ?? "No definida")</dd></div>
+                    <div><dt>Requiere aprobacion</dt><dd>@(solicitud.RequiereAprobacion ? "Si" : "No")</dd></div>
+                    <div><dt>Aprobador</dt><dd>@(solicitud.AprobadorNombre ?? "No asignado")</dd></div>
+                    <div><dt>Auxiliar</dt><dd>@(solicitud.AuxiliarNombre ?? "No asignado")</dd></div>
+                    <div><dt>Analista</dt><dd>@(solicitud.AnalistaNombre ?? "No asignado")</dd></div>
+                </dl>
+            </article>
+
+            <article class="detail-card">
+                <span class="section-kicker">Proveedores</span>
+                @if (solicitud.Proveedores.Count == 0)
+                {
+                    <p class="muted-copy">Aun no hay proveedores registrados.</p>
+                }
+                else
+                {
+                    <div class="compact-list">
+                        @foreach (var proveedor in solicitud.Proveedores.OrderBy(proveedor => proveedor.Orden))
+                        {
+                            <div class="compact-row">
+                                <div>
+                                    <strong>@proveedor.Nombre</strong>
+                                    <small>@proveedor.Origen - @(proveedor.Nit ?? proveedor.IdentificadorErp ?? "Sin identificador")</small>
+                                </div>
+                                <span class="status-badge @(proveedor.Seleccionado ? "completed" : proveedor.Validado ? "active" : "returned")">
+                                    @(proveedor.Seleccionado ? "seleccionado" : proveedor.Validado ? "validado" : "pendiente")
+                                </span>
+                            </div>
+                        }
+                    </div>
+                }
+            </article>
+
+            <article class="detail-card">
+                <span class="section-kicker">Documentos</span>
+                @if (solicitud.Documentos.Count == 0)
+                {
+                    <p class="muted-copy">Aun no hay documentos cargados.</p>
+                }
+                else
+                {
+                    <div class="compact-list">
+                        @foreach (var documento in solicitud.Documentos.OrderByDescending(documento => documento.CreatedAt))
+                        {
+                            <div class="compact-row">
+                                <div>
+                                    <strong>@documento.NombreArchivo</strong>
+                                    <small>@documento.Tipo - @documento.MimeType</small>
+                                </div>
+                                <span>@FormatDate(documento.CreatedAt)</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </article>
+        </div>
+
+        <article class="detail-card timeline-card">
+            <span class="section-kicker">Historial</span>
+            <div class="timeline">
+                @foreach (var item in solicitud.Historial.OrderByDescending(item => item.CreatedAt))
+                {
+                    <div class="timeline-item">
+                        <span>@FormatDate(item.CreatedAt)</span>
+                        <strong>@item.Accion</strong>
+                        <small>@FormatStage(item.Etapa) - @(item.ActorNombre ?? "Sistema")</small>
+                        @if (!string.IsNullOrWhiteSpace(item.Comentario))
+                        {
+                            <p>@item.Comentario</p>
+                        }
+                    </div>
+                }
+            </div>
+        </article>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "creada")]
+    public string? Creada { get; set; }
+
+    private LoginResponse? session;
+    private SolicitudDetalleResponse? solicitud;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        session = SessionService.GetCurrentSession();
+        if (session is null)
+        {
+            Navigation.NavigateTo($"/login?returnUrl=/solicitudes/{Id}");
+            return;
+        }
+
+        try
+        {
+            solicitud = await SolicitudService.ObtenerDetalleAsync(Id, session.Usuario.Id);
+            errorMessage = null;
+        }
+        catch (Exception exception)
+        {
+            solicitud = null;
+            errorMessage = exception.Message;
+        }
+    }
+
+    private static string FormatDate(DateTimeOffset value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+
+    private static string GetStatusClass(string estado) => estado.Equals("completada", StringComparison.OrdinalIgnoreCase)
+        ? "completed"
+        : estado.Equals("devuelta", StringComparison.OrdinalIgnoreCase) ? "returned" : "active";
+
+    private static string FormatStage(string value) => string.Join(' ', value.Split('_', StringSplitOptions.RemoveEmptyEntries))
+        .ToLowerInvariant();
+}

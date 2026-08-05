@@ -1,5 +1,7 @@
 ﻿@page "/"
+@using GestorProveedores.Business.Solicitudes
 @inject WebAppSessionService SessionService
+@inject ISolicitudService SolicitudService
 @inject NavigationManager Navigation
 
 <PageTitle>Gestor Proveedores</PageTitle>
@@ -11,6 +13,13 @@
 		<h1>Ingreso requerido</h1>
 	</section>
 }
+else if (dashboard is null)
+{
+	<section class="loading-shell">
+		<span class="section-kicker">Cargando</span>
+		<h1>Preparando tu bandeja</h1>
+	</section>
+}
 else
 {
 	<section class="dashboard-shell">
@@ -18,7 +27,14 @@ else
 			<div>
 				<span class="section-kicker">Panel operativo</span>
 				<h1>Gestion de proveedores</h1>
-				<p>Solicitudes, aprobaciones y documentos organizados por etapa.</p>
+				<p>@dashboard.Subtitle</p>
+				<div class="hero-actions">
+					<a class="panel-action" href="/admin">Panel administrativo</a>
+					@if (string.Equals(session.Usuario.Rol, "solicitante", StringComparison.OrdinalIgnoreCase))
+					{
+						<a class="panel-action secondary" href="/solicitudes/nueva">Nueva solicitud</a>
+					}
+				</div>
 			</div>
 
 			<div class="user-card">
@@ -32,64 +48,43 @@ else
 		</div>
 
 		<div class="summary-grid" id="operacion">
-			<div class="summary-card highlight">
-				<span>Activas</span>
-				<strong>24</strong>
-				<small>En revision y aprobacion</small>
-			</div>
-			<div class="summary-card highlight">
-				<span>Por validar</span>
-				<strong>8</strong>
-				<small>Documentos pendientes</small>
-			</div>
-			<div class="summary-card">
-				<span>Completadas</span>
-				<strong>31</strong>
-				<small>Cierre contable</small>
-			</div>
+			@foreach (var metric in dashboard.Metrics)
+			{
+				<div class="summary-card @(metric.IsHighlighted ? "highlight" : null)">
+					<span>@metric.Label</span>
+					<strong>@metric.Value</strong>
+					<small>@metric.Description</small>
+				</div>
+			}
 		</div>
 
 		<div class="dashboard-grid">
 			<div class="process-panel" id="flujo">
 				<span class="section-kicker">Flujo</span>
 				<div class="workflow-strip">
-					<div>
-						<span class="step-number">01</span>
-						<strong>Solicitud</strong>
-					</div>
-					<div>
-						<span class="step-number">02</span>
-						<strong>Proveedor</strong>
-					</div>
-					<div>
-						<span class="step-number">03</span>
-						<strong>Orden</strong>
-					</div>
-					<div>
-						<span class="step-number">04</span>
-						<strong>Factura</strong>
-					</div>
-					<div>
-						<span class="step-number">05</span>
-						<strong>Contabilidad</strong>
-					</div>
+					@foreach (var stage in dashboard.Stages)
+					{
+						<div>
+							<span class="step-number">@stage.Number</span>
+							<strong>@stage.Label</strong>
+							<small>@FormatSolicitudes(stage.Count)</small>
+						</div>
+					}
 				</div>
 			</div>
 
 			<div class="worklist-panel">
-				<span class="section-kicker">Prioridad</span>
-				<div class="worklist-row">
-					<strong>OC por aprobacion</strong>
-					<span>4</span>
-				</div>
-				<div class="worklist-row">
-					<strong>Facturas objetadas</strong>
-					<span>2</span>
-				</div>
-				<div class="worklist-row">
-					<strong>Soportes contables</strong>
-					<span>6</span>
-				</div>
+				<span class="section-kicker">Bandejas</span>
+				@foreach (var row in dashboard.Worklist)
+				{
+					<a class="worklist-row" href="@($"/solicitudes?vista={row.ViewName}")">
+						<div>
+							<strong>@row.Label</strong>
+							<small>@row.Description</small>
+						</div>
+						<span>@row.Count</span>
+					</a>
+				}
 			</div>
 		</div>
 	</section>
@@ -97,13 +92,102 @@ else
 
 @code {
     private LoginResponse? session;
+    private DashboardModel? dashboard;
 
-	protected override void OnInitialized()
+	protected override async Task OnInitializedAsync()
 	{
 		session = SessionService.GetCurrentSession();
 		if (session is null)
 		{
 			Navigation.NavigateTo("/login?returnUrl=/");
+			return;
 		}
+
+		dashboard = await BuildDashboardAsync(session, CancellationToken.None);
 	}
+
+	private async Task<DashboardModel> BuildDashboardAsync(LoginResponse currentSession, CancellationToken cancellationToken)
+	{
+		var views = SolicitudViewCatalog.GetForRole(currentSession.Usuario.Rol);
+		var worklist = new List<WorklistRow>();
+		var visibleItems = new List<SolicitudListItemResponse>();
+		var actionItems = new List<SolicitudListItemResponse>();
+
+		foreach (var view in views)
+		{
+			var items = await SolicitudService.ListarAsync(
+				new SolicitudListQuery(view.Name, null, null, null, null),
+				currentSession.Usuario.Id,
+				cancellationToken);
+
+			visibleItems.AddRange(items);
+			if (!view.IsOverview)
+			{
+				actionItems.AddRange(items);
+			}
+
+			worklist.Add(new WorklistRow(view.Name, view.Label, view.Description, items.Count));
+		}
+
+		var uniqueItems = visibleItems
+			.GroupBy(item => item.Id)
+			.Select(group => group.First())
+			.ToList();
+
+		var activeCount = uniqueItems.Count(item => !IsCompleted(item));
+		var completedCount = uniqueItems.Count(IsCompleted);
+		var attentionCount = actionItems
+			.GroupBy(item => item.Id)
+			.Count();
+
+		var metrics = new[]
+		{
+			new DashboardMetric("En bandeja", activeCount, "Solicitudes visibles para tu rol", true),
+			new DashboardMetric("Requieren accion", attentionCount, "Pendientes segun etapa asignada", true),
+			new DashboardMetric("Completadas", completedCount, "Cierres presentes en tus vistas", false)
+		};
+
+		return new DashboardModel(
+			GetSubtitle(currentSession.Usuario.Rol),
+			metrics,
+			worklist,
+			BuildStages(uniqueItems));
+	}
+
+	private static IReadOnlyList<StageMetric> BuildStages(IReadOnlyList<SolicitudListItemResponse> solicitudes) =>
+	[
+		new("01", "Solicitud", solicitudes.Count(item => IsAnyStage(item, "revision_auxiliar", "devuelta_solicitante"))),
+		new("02", "Proveedor", solicitudes.Count(item => IsAnyStage(item, "revision_proveedores", "seleccion_proveedor"))),
+		new("03", "Orden", solicitudes.Count(item => IsAnyStage(item, "carga_orden_compra", "revision_oc_solicitante", "revision_oc_aprobador", "oc_devuelta_auxiliar"))),
+		new("04", "Factura", solicitudes.Count(item => IsAnyStage(item, "revision_anomalias", "revision_factura_solicitante", "factura_devuelta_analista", "factura_aprobada_auxiliar", "factura_objetada_contable"))),
+		new("05", "Contabilidad", solicitudes.Count(item => IsAnyStage(item, "validacion_contable", "completada")))
+	];
+
+	private static string GetSubtitle(string role) => role switch
+	{
+		"solicitante" => "Tus solicitudes y aprobaciones pendientes, cargadas desde la base de datos.",
+		"auxiliar" => "Bandejas operativas de compras asignadas a tu usuario.",
+		"analista" => "Seleccion de proveedores y revision de facturas asignadas.",
+		"aprobador" => "Ordenes de compra pendientes de aprobacion.",
+		"contable" => "Facturas listas para validacion y cierre contable.",
+		"superusuario" => "Vista global de solicitudes, usuarios y configuracion del sistema.",
+		_ => "Solicitudes y documentos organizados por etapa."
+	};
+
+	private static bool IsCompleted(SolicitudListItemResponse item) =>
+		string.Equals(item.Estado, "completada", StringComparison.OrdinalIgnoreCase);
+
+	private static bool IsAnyStage(SolicitudListItemResponse item, params string[] stages) =>
+		stages.Any(stage => string.Equals(item.Etapa, stage, StringComparison.OrdinalIgnoreCase));
+
+	private static string FormatSolicitudes(int count) => count == 1 ? "1 solicitud" : $"{count} solicitudes";
+
+	private sealed record DashboardMetric(string Label, int Value, string Description, bool IsHighlighted);
+	private sealed record WorklistRow(string ViewName, string Label, string Description, int Count);
+	private sealed record StageMetric(string Number, string Label, int Count);
+	private sealed record DashboardModel(
+		string Subtitle,
+		IReadOnlyList<DashboardMetric> Metrics,
+		IReadOnlyList<WorklistRow> Worklist,
+		IReadOnlyList<StageMetric> Stages);
 }

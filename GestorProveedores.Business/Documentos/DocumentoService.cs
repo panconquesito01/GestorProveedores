@@ -39,6 +39,7 @@ internal sealed class DocumentoService(
 
     private static bool TieneAcceso(Usuario usuario, Solicitud solicitud) => usuario.Rol switch
     {
+        RolUsuario.Superusuario => true,
         RolUsuario.Solicitante => solicitud.SolicitanteId == usuario.Id,
         RolUsuario.Auxiliar => solicitud.AuxiliarId == usuario.Id,
         RolUsuario.Analista => solicitud.AnalistaId == usuario.Id,

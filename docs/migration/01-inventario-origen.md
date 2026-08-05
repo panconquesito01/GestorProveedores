@@ -326,6 +326,10 @@ Descarga documento: GET /api/documentos/{id} con Bearer token del auxiliar asign
 Rama con aprobador: aprobacion solicitante -> revision_oc_aprobador; aprobacion aprobador -> revision_anomalias.
 Rama objecion contable: validacion_contable -> factura_objetada_contable/devuelta -> reenviar factura -> revision_factura_solicitante/en_proceso.
 WebApp: `/login` renderiza sin menu; login `crojas/123` redirige a `/` con menu y sesion; logout vuelve a `/login`; validado sin overflow horizontal en 390x844 y 1440x900.
+Dashboard WebApp: metricas, etapas y bandejas cargan desde `ISolicitudService` segun rol; se eliminaron los datos de demostracion.
+Solicitudes WebApp: `/solicitudes` lista bandejas por rol con datos reales y cada fila navega a `/solicitudes/{id}`; el detalle muestra datos generales, proveedores, documentos e historial.
+Panel administrativo WebApp: `/admin` centraliza crear, cargar/revisar por bandeja y consultar catalogos; `/solicitudes/nueva` crea una solicitud real y redirige al detalle creado.
+Seguridad Business: `ObtenerDetalleAsync` valida acceso por participante/asignacion antes de devolver el detalle.
 ```
 
-Siguiente paso: migrar pantallas reales de solicitudes/workflow en WebApp sobre el layout principal y reemplazar datos demostrativos del dashboard por consultas de `Business`.
+Siguiente paso: agregar acciones condicionales del workflow dentro del detalle de solicitud, empezando por paso 1 auxiliar y cargas documentales de proveedor/orden/factura.

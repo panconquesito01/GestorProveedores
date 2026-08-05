@@ -6,6 +6,7 @@ internal static class EnumText
 {
     public static string ToApiValue(RolUsuario value) => value switch
     {
+        RolUsuario.Superusuario => "superusuario",
         RolUsuario.Solicitante => "solicitante",
         RolUsuario.Auxiliar => "auxiliar",
         RolUsuario.Analista => "analista",

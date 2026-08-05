@@ -1,0 +1,221 @@
+@page "/solicitudes"
+@inject WebAppSessionService SessionService
+@inject ISolicitudService SolicitudService
+@inject ICatalogoService CatalogoService
+@inject NavigationManager Navigation
+
+<PageTitle>Solicitudes - Gestor Proveedores</PageTitle>
+
+@if (session is null)
+{
+    <section class="loading-shell">
+        <span class="section-kicker">Redireccionando</span>
+        <h1>Ingreso requerido</h1>
+    </section>
+}
+else
+{
+    <section class="list-shell">
+        <div class="page-hero compact-hero">
+            <div>
+                <span class="section-kicker">Bandeja</span>
+                <h1>Solicitudes</h1>
+                <p>@selectedView?.Description</p>
+                <div class="hero-actions">
+                    <a class="panel-action secondary" href="/admin">Panel administrativo</a>
+                    @if (CanCreateSolicitud)
+                    {
+                        <a class="panel-action" href="/solicitudes/nueva">Nueva solicitud</a>
+                    }
+                </div>
+            </div>
+            <div class="hero-stat">
+                <span>@selectedView?.Label</span>
+                <strong>@solicitudes.Count</strong>
+                <small>@FormatHeroScope()</small>
+            </div>
+        </div>
+
+        <nav class="view-tabs" aria-label="Bandejas disponibles">
+            @foreach (var view in views)
+            {
+                <a class="view-tab @(IsSelected(view) ? "active" : null)" href="@BuildSolicitudesUrl(view.Name, EmpresaId)">
+                    <strong>@view.Label</strong>
+                    <small>@view.Description</small>
+                </a>
+            }
+        </nav>
+
+        @if (IsSuperusuario && empresas.Count > 0)
+        {
+            <div class="company-filter">
+                <div class="company-picker">
+                    <span class="field-label compact-label" id="empresa-picker-label">Empresa a ver</span>
+                    <details class="company-dropdown">
+                        <summary class="company-dropdown-trigger" aria-labelledby="empresa-picker-label">
+                            <span>@CurrentCompanyLabel()</span>
+                            <span class="dropdown-caret" aria-hidden="true"></span>
+                        </summary>
+                        <div class="company-dropdown-menu" role="listbox" aria-label="Empresas">
+                            <a class="company-option @(EmpresaId is null ? "active" : null)" href="@BuildSolicitudesUrl(selectedView?.Name, null)" role="option" aria-selected="@(EmpresaId is null ? "true" : "false")">
+                                <strong>Todas las empresas</strong>
+                                <small>Vista global</small>
+                            </a>
+                            @foreach (var empresa in empresas)
+                            {
+                                <a class="company-option @(EmpresaId == empresa.Id ? "active" : null)" href="@BuildSolicitudesUrl(selectedView?.Name, empresa.Id)" role="option" aria-selected="@(EmpresaId == empresa.Id ? "true" : "false")">
+                                    <strong>@empresa.Nombre</strong>
+                                    <small>@empresa.Nit</small>
+                                </a>
+                            }
+                        </div>
+                    </details>
+                </div>
+            </div>
+        }
+
+        <div class="requests-panel">
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="form-alert">@errorMessage</div>
+            }
+            else if (solicitudes.Count == 0)
+            {
+                <div class="empty-state">
+                    <span class="section-kicker">Sin pendientes</span>
+                    <h2>No hay solicitudes en esta bandeja</h2>
+                    <p>Cuando una solicitud llegue a esta etapa aparecera aqui automaticamente.</p>
+                </div>
+            }
+            else
+            {
+                <div class="requests-table" role="table" aria-label="Solicitudes">
+                    <div class="requests-head" role="row">
+                        <span>Solicitud</span>
+                        <span>Empresa</span>
+                        <span>Etapa</span>
+                        <span>Estado</span>
+                        <span>Actualizada</span>
+                    </div>
+
+                    @foreach (var solicitud in solicitudes)
+                    {
+                        <a class="request-row" href="@($"/solicitudes/{solicitud.Id}")" role="row">
+                            <span class="request-main">
+                                <strong>@solicitud.Radicado</strong>
+                                <small>@solicitud.Titulo</small>
+                            </span>
+                            <span>@solicitud.EmpresaNombre</span>
+                            <span>@FormatStage(solicitud.Etapa)</span>
+                            <span><span class="status-badge @GetStatusClass(solicitud.Estado)">@FormatStage(solicitud.Estado)</span></span>
+                            <span>@FormatDate(solicitud.UpdatedAt)</span>
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "vista")]
+    public string? Vista { get; set; }
+
+    [SupplyParameterFromQuery(Name = "empresaId")]
+    public int? EmpresaId { get; set; }
+
+    private LoginResponse? session;
+    private IReadOnlyList<SolicitudViewDefinition> views = [];
+    private SolicitudViewDefinition? selectedView;
+    private IReadOnlyList<SolicitudListItemResponse> solicitudes = [];
+    private IReadOnlyList<EmpresaResponse> empresas = [];
+    private string? errorMessage;
+
+    private bool CanCreateSolicitud => string.Equals(session?.Usuario.Rol, "solicitante", StringComparison.OrdinalIgnoreCase);
+    private bool IsSuperusuario => string.Equals(session?.Usuario.Rol, "superusuario", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        session = SessionService.GetCurrentSession();
+        if (session is null)
+        {
+            Navigation.NavigateTo("/login?returnUrl=/solicitudes");
+            return;
+        }
+
+        views = SolicitudViewCatalog.GetForRole(session.Usuario.Rol);
+        selectedView = views.FirstOrDefault(view => string.Equals(view.Name, Vista, StringComparison.OrdinalIgnoreCase))
+            ?? views.FirstOrDefault();
+
+        if (selectedView is null)
+        {
+            errorMessage = "No hay bandejas configuradas para tu rol.";
+            return;
+        }
+
+        empresas = IsSuperusuario
+            ? await CatalogoService.ListarEmpresasAsync()
+            : [];
+
+        var empresaId = IsSuperusuario && empresas.Any(empresa => empresa.Id == EmpresaId)
+            ? EmpresaId
+            : null;
+
+        EmpresaId = empresaId;
+
+        try
+        {
+            solicitudes = await SolicitudService.ListarAsync(
+                new SolicitudListQuery(selectedView.Name, null, empresaId, null, null),
+                session.Usuario.Id);
+
+            solicitudes = solicitudes
+                .OrderByDescending(solicitud => solicitud.UpdatedAt)
+                .ToList();
+
+            errorMessage = null;
+        }
+        catch (Exception exception)
+        {
+            solicitudes = [];
+            errorMessage = exception.Message;
+        }
+    }
+
+    private bool IsSelected(SolicitudViewDefinition view) =>
+        selectedView is not null && string.Equals(selectedView.Name, view.Name, StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildSolicitudesUrl(string? viewName, int? empresaId)
+    {
+        var vista = Uri.EscapeDataString(viewName ?? string.Empty);
+        return empresaId is null
+            ? $"/solicitudes?vista={vista}"
+            : $"/solicitudes?vista={vista}&empresaId={empresaId.Value}";
+    }
+
+    private static string FormatDate(DateTimeOffset value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+
+    private static string FormatSolicitudes(int count) => count == 1 ? "solicitud" : "solicitudes";
+
+    private string CurrentCompanyLabel() => EmpresaId is null
+        ? "Todas las empresas"
+        : empresas.FirstOrDefault(empresa => empresa.Id == EmpresaId)?.Nombre ?? "Todas las empresas";
+
+    private string FormatHeroScope()
+    {
+        var scope = IsSuperusuario && EmpresaId is not null
+            ? empresas.FirstOrDefault(empresa => empresa.Id == EmpresaId)?.Nombre
+            : null;
+
+        return string.IsNullOrWhiteSpace(scope)
+            ? FormatSolicitudes(solicitudes.Count)
+            : scope;
+    }
+
+    private static string GetStatusClass(string estado) => estado.Equals("completada", StringComparison.OrdinalIgnoreCase)
+        ? "completed"
+        : estado.Equals("devuelta", StringComparison.OrdinalIgnoreCase) ? "returned" : "active";
+
+    private static string FormatStage(string value) => string.Join(' ', value.Split('_', StringSplitOptions.RemoveEmptyEntries))
+        .ToLowerInvariant();
+}

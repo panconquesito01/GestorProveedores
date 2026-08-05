@@ -2,6 +2,7 @@ using GestorProveedores.Business.Authentication;
 using GestorProveedores.Business.Catalogos;
 using GestorProveedores.Business.Documentos;
 using GestorProveedores.Business.Solicitudes;
+using GestorProveedores.Business.Usuarios;
 using GestorProveedores.Business.Workflow;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<ICatalogoService, CatalogoService>();
         services.AddScoped<IDocumentoService, DocumentoService>();
         services.AddScoped<ISolicitudService, SolicitudService>();
+        services.AddScoped<IUsuarioAdminService, UsuarioAdminService>();
         services.AddScoped<IWorkflowService, WorkflowService>();
 
         return services;
