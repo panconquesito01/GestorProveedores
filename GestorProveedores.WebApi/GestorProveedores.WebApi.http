@@ -1,0 +1,6 @@
+@GestorProveedores.WebApi_HostAddress = http://localhost:5069
+
+GET {{GestorProveedores.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="GestorProveedores.Business/GestorProveedores.Business.csproj" />
+  <Project Path="GestorProveedores.Domain/GestorProveedores.Domain.csproj" />
+  <Project Path="GestorProveedores.Infrastructure/GestorProveedores.Infrastructure.csproj" />
+  <Project Path="GestorProveedores.Shared/GestorProveedores.Shared.csproj" />
+  <Project Path="GestorProveedores.WebApi/GestorProveedores.WebApi.csproj" />
+  <Project Path="GestorProveedores.WebApp/GestorProveedores.WebApp.csproj" />
+</Solution>

@@ -1,0 +1,27 @@
+# Visual Studio / VS Code
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# Build output
+[Bb]in/
+[Oo]bj/
+**/[Bb]in/
+**/[Oo]bj/
+
+# Test and coverage output
+TestResults/
+*.trx
+coverage/
+coverage.cobertura.xml
+*.coverage
+
+# Logs and local environment
+*.log
+.env
+.env.*
+!.env.example
