@@ -25,3 +25,9 @@ coverage.cobertura.xml
 .env
 .env.*
 !.env.example
+
+# MonsterASP / publish (credenciales)
+*.publishSettings
+**/PublishProfiles/*.pubxml.user
+deploy/monsterasp/*.publishSettings
+database/sqlserver/monsterasp/*.bak
